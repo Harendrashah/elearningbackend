@@ -147,9 +147,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # --- New Configurations for our Platform ---
 
 # Django REST Framework settings
+# Django REST Framework settings
 REST_FRAMEWORK = {
-    "detail": "Authentication credentials were not provided."
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
 }
+
 
 # Channels settings for WebSockets
 CHANNEL_LAYERS = {
