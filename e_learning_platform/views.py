@@ -7,7 +7,7 @@ from rest_framework.permissions import AllowAny
 
 
 @api_view(['GET'])
-# @permission_classes([AllowAny])
+@permission_classes([AllowAny])
 def api_root(request, format=None):
     """
     A simple API Root view to provide navigation links.
