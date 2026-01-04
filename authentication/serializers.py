@@ -22,34 +22,41 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 # Profile Update Serializer for edit
 class ProfileUpdateSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='user.username', read_only=True)
-    first_name = serializers.CharField(source='user.first_name', required=False)
-    last_name = serializers.CharField(source='user.last_name', required=False)
+    username = serializers.CharField(source='user.username', required=False)
+    email = serializers.EmailField(source='user.email', required=False)
 
     class Meta:
         model = UserProfile
-        fields = ['username', 'first_name', 'last_name', 'phone', 'profile_image']
+        fields = ['username', 'email', 'phone', 'profile_image']
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
-        if 'first_name' in user_data:
-            instance.user.first_name = user_data['first_name']
-        if 'last_name' in user_data:
-            instance.user.last_name = user_data['last_name']
+
+        if 'username' in user_data:
+            instance.user.username = user_data['username']
+        if 'email' in user_data:
+            instance.user.email = user_data['email']
+
         instance.user.save()
         return super().update(instance, validated_data)
 
 
 # Registration Serializer
+# class RegistrationSerializer(serializers.ModelSerializer):
+#     phone = serializers.CharField()
+#     role = serializers.ChoiceField(choices=UserProfile.ROLE_CHOICES, default='student')
+#     password = serializers.CharField(write_only=True)
+#     password_confirm = serializers.CharField(write_only=True)
+
 class RegistrationSerializer(serializers.ModelSerializer):
     phone = serializers.CharField()
-    role = serializers.ChoiceField(choices=UserProfile.ROLE_CHOICES, default='student')
     password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(write_only=True)
 
+
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'phone', 'role')
+        fields = ('username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'phone')
 
     def validate(self, data):
         if data['password'] != data['password_confirm']:
@@ -58,7 +65,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         phone = validated_data.pop('phone')
-        role = validated_data.pop('role')
+        # role = validated_data.pop('role')
         validated_data.pop('password_confirm')
 
         user = User.objects.create_user(
@@ -74,7 +81,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
         profile = user.profile
         profile.phone = phone
-        profile.role = role
+        profile.role ='student'  # Default role
         profile.otp = otp
         profile.save()
 
