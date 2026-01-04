@@ -57,7 +57,7 @@ def verify_otp(request):
             user.is_active = True
             profile.is_verified = True
             profile.otp = None
-
+            profile.email = user.email  # Update email in profile
             user.save()
             profile.save()
 
