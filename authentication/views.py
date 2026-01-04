@@ -18,8 +18,7 @@ class UserProfileDetailView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
-        profile, created = UserProfile.objects.get_or_create(user=self.request.user)
-        return profile
+        return self.request.user.profile
 
 # -------------------------
 # Registration View
@@ -52,14 +51,20 @@ def verify_otp(request):
 
     try:
         user = User.objects.get(username=username)
-        if user.profile.otp == otp:
+        profile = user.profile
+
+        if profile.otp == otp:
             user.is_active = True
-            user.profile.is_verified = True
-            user.profile.otp = None
+            profile.is_verified = True
+            profile.otp = None
+
             user.save()
-            user.profile.save()
+            profile.save()
+
             return Response({'message': 'Account verified successfully'})
+
         return Response({'error': 'Invalid OTP'}, status=400)
+
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=404)
 
