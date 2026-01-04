@@ -1,3 +1,4 @@
+#models.py
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -18,7 +19,7 @@ class UserProfile(models.Model):
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')
     phone = models.CharField(max_length=15, blank=True, null=True)
-    email = models.EmailField(blank=True, null=True)  # 👈 NEW FIELD
+    email = models.EmailField(blank=True, null=True)
     profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
     is_verified = models.BooleanField(default=False)
     otp = models.CharField(max_length=6, blank=True, null=True)
@@ -27,7 +28,6 @@ class UserProfile(models.Model):
         return self.user.username
 
 
-# ✅ SINGLE SAFE SIGNAL (NO DUPLICATES)
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, **kwargs):
     UserProfile.objects.get_or_create(user=instance)
