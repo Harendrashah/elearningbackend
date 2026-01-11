@@ -6,9 +6,12 @@ from .models import UserProfile
 
 # User Serializer
 class UserSerializer(serializers.ModelSerializer):
+    role = serializers.CharField(source='profile.role', read_only=True)
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role')
+
 
 
 # Profile Serializer for read
@@ -18,6 +21,26 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ('user', 'role', 'email', 'profile_image', 'phone', 'otp')
+
+class AdminUserProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', required=False)
+    email = serializers.EmailField(source='user.email', required=False)
+
+    class Meta:
+        model = UserProfile
+        fields = ['id', 'username', 'email', 'role', 'phone', 'profile_image']
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+
+        if 'username' in user_data:
+            instance.user.username = user_data['username']
+        if 'email' in user_data:
+            instance.user.email = user_data['email']
+
+        instance.user.save()
+        return super().update(instance, validated_data)
+
 
 
 # Profile Update Serializer for edit
