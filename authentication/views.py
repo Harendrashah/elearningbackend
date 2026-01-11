@@ -101,16 +101,16 @@ def login_view(request):
 # -------------------------
 # Admin Views
 # -------------------------
-class AdminUserListView(generics.ListAPIView):
-    queryset = UserProfile.objects.all()
-    serializer_class = UserProfileSerializer
-    permission_classes = [IsAdminUserProfile]
+# class AdminUserListView(generics.ListAPIView):
+#     queryset = UserProfile.objects.all()
+#     serializer_class = UserProfileSerializer
+#     permission_classes = [IsAdminUserProfile]
 
-class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = UserProfile.objects.all()
-    serializer_class = UserProfileSerializer
-    permission_classes = [IsAdminUserProfile]
-    lookup_field = 'id'
+# class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
+#     queryset = UserProfile.objects.all()
+#     serializer_class = UserProfileSerializer
+#     permission_classes = [IsAdminUserProfile]
+#     lookup_field = 'id'
 
 class AdminUserListView(generics.ListAPIView):
     queryset = UserProfile.objects.all()
