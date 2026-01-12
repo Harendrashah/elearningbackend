@@ -9,6 +9,7 @@ content_list = ContentViewSet.as_view({
     'get': 'list',
     'post': 'create'
 })
+
 content_detail = ContentViewSet.as_view({
     'get': 'retrieve',
     'put': 'update',
