@@ -11,6 +11,11 @@ urlpatterns = [
     path('api/auth/', include('authentication.urls')),
     path('api/', include('courses.urls')),
     path('api/instructors/', include('instructors.urls')),
+    path('api/streaming/', include('streaming.urls')),
+    path('api/notes/', include('notes.urls')),   # ✅ Notes API
+    
+
+    
 
 ]
 
