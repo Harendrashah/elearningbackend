@@ -5,7 +5,8 @@ from .views import (
     verify_otp,
     UserProfileDetailView,
     AdminUserListView,
-    AdminUserDetailView
+    AdminUserDetailView,
+    admin_update_role
 )
 from .views import (
     TeacherStudentListView,
@@ -24,10 +25,11 @@ urlpatterns = [
     # 🔥 ADMIN APIs
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
     path('admin/users/<int:id>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
-    
+    path('admin/update-role/<int:pk>/', admin_update_role, name='admin-update-role'),
     # teacher APIs
     path('teacher/students/', TeacherStudentListView.as_view(), name='teacher-student-list'),
     path('teacher/students/<int:id>/', TeacherStudentDetailView.as_view(), name='teacher-student-detail'),
     path('teacher/dashboard/', teacher_dashboard_stats, name='teacher-dashboard'),
     path('teacher/enroll/', enroll_student, name='teacher-enroll-student'),
+    
 ]

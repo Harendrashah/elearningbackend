@@ -12,5 +12,5 @@ class IsInstructorOrAdmin(BasePermission):
         if role == 'admin':
             return True
         if role == 'teacher':
-            return obj.course.instructor == request.user
+            return obj.course.instructor.user == request.user
         return False

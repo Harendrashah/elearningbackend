@@ -1,13 +1,16 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+# instructors/views.py
+from rest_framework import viewsets, permissions
 from .models import Instructor
 from .serializers import InstructorSerializer
 
-class InstructorListView(APIView):
-    permission_classes = [AllowAny]
+class InstructorViewSet(viewsets.ModelViewSet):
+    queryset = Instructor.objects.all()
+    serializer_class = InstructorSerializer
 
-    def get(self, request):
-        instructors = Instructor.objects.all()
-        serializer = InstructorSerializer(instructors, many=True)
-        return Response(serializer.data)
+    def get_permissions(self):
+        # 1. List/Retrieve (Herna): Sabai le pauchan
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        
+        # 2. Create/Update/Delete: Only Admin (Security ko lagi)
+        return [permissions.IsAdminUser()]

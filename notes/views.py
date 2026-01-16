@@ -1,3 +1,4 @@
+# notes/views.py
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated, BasePermission, SAFE_METHODS
 from rest_framework.parsers import MultiPartParser, FormParser
