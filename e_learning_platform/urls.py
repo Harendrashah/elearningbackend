@@ -13,8 +13,8 @@ urlpatterns = [
     path('api/instructors/', include('instructors.urls')),
     path('api/streaming/', include('streaming.urls')),
     path('api/notes/', include('notes.urls')),   # ✅ Notes API
-    
-
+    path('api/', include('videos.urls')),    
+    path('api/chat/', include('chat.urls')),             # URL: /api/chat/ask/
     
 
 ]

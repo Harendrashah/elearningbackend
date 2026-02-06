@@ -47,8 +47,9 @@ INSTALLED_APPS = [
     'streaming',
     'instructors',
     'notes',
-    # 'chat',
+    'chat',
     'inquiries',
+    'videos',
 ]
 
 # We add CORS middleware at the top

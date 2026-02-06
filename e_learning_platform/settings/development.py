@@ -17,6 +17,3 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-INSTALLED_APPS += [
-    'chat',  # add chat app
-]
