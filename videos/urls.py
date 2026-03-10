@@ -3,7 +3,9 @@ from rest_framework.routers import DefaultRouter
 from .views import VideoViewSet
 
 router = DefaultRouter()
-router.register(r'videos', VideoViewSet) # URL: /api/videos/
+
+# 👇 यहाँ 'basename' थप्नुपर्छ
+router.register(r'videos', VideoViewSet, basename='video') 
 
 urlpatterns = [
     path('', include(router.urls)),

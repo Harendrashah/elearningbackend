@@ -4,4 +4,7 @@ from .models import Note
 
 @admin.register(Note)
 class NoteAdmin(admin.ModelAdmin):
-    list_display = ('title', 'course', 'uploaded_at')
+    # 👈 'video' थपिएको छ
+    list_display = ('title', 'course', 'video', 'uploaded_at')
+    list_filter = ('course', 'video')
+    search_fields = ('title',)

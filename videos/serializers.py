@@ -1,12 +1,17 @@
+# videos/serializers.py
 from rest_framework import serializers
 from .models import Video
+from notes.serializers import NoteSerializer  # 👈 Note को Serializer तानिएको
 
 class VideoSerializer(serializers.ModelSerializer):
+    # 👈 यो भिडियोसँग जोडिएका सबै नोटहरु सँगै पठाउन
+    notes = NoteSerializer(many=True, read_only=True) 
+
     class Meta:
         model = Video
-        fields = ['id', 'course', 'title', 'video_file', 'video_url', 'created_at']
+        # 👈 fields मा 'notes' थपिएको छ
+        fields = ['id', 'course', 'title', 'video_file', 'video_url', 'created_at', 'notes'] 
 
-    # Validation: File वा Link मध्ये एउटा अनिवार्य हुनुपर्छ
     def validate(self, data):
         file = data.get('video_file')
         url = data.get('video_url')
