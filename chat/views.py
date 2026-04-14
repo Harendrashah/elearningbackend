@@ -84,86 +84,56 @@ genai.configure(api_key=API_KEY)
 @permission_classes([AllowAny])
 def chatbot_api(request):
     user_message = request.data.get('message', '')
-    user = request.user  # लगइन भएको युजर
+    user = request.user 
     
     courses_info = ""
     enrolled_notes_context = ""
 
-    # ================= 1. DATABASE DATA FETCHING =================
+    # 1. सबै कोर्षको जानकारी तान्ने
+    all_courses = Course.objects.all()
+    for course in all_courses:
+        courses_info += f"- {course.title}: Rs. {course.price}\n"
 
-    # --- A. सबै उपलब्ध कोर्षहरूको जानकारी तान्ने ---
-    try:
-        all_courses = Course.objects.all()
-        if not all_courses:
-            courses_info = "No courses available at the moment."
-        else:
-            for course in all_courses:
-                courses_info += f"- Course: {course.title}, Price: Rs. {course.price}\n"
-    except Exception as e:
-        courses_info = "Error fetching courses."
-
-    # --- B. युजर लगइन छ भने उसको Enrollment र Notes चेक गर्ने ---
+    # 2. युजर इनरोलमेन्ट र नोट तान्ने
     if user.is_authenticated:
-        try:
-            # Enrollment मोडलमा 'student' फिल्ड छ भने (तपाईंको अघिल्लो कोड अनुसार)
-            user_enrollments = Enrollment.objects.filter(student=user)
-            
-            # यदि 'student' ले काम गरेन भने 'user=user' ट्राइ गर्नुहोस्:
-            # user_enrollments = Enrollment.objects.filter(user=user)
+        user_enrollments = Enrollment.objects.filter(student=user)
+        
+        if user_enrollments.exists():
+            enrolled_notes_context = "\n--- PRIVATE NOTES FOR THIS STUDENT ---\n"
+            for enrollment in user_enrollments:
+                course_notes = Note.objects.filter(course=enrollment.course)
+                for note in course_notes:
+                    # नोटको सामाग्री (Content) छ भने मात्र थप्ने
+                    content_text = note.content if note.content else "No text description available."
+                    enrolled_notes_context += f"TOPIC: {note.title}\nCONTENT: {content_text}\n\n"
 
-            if user_enrollments.exists():
-                enrolled_notes_context = "\n--- PRIVATE NOTES FOR THIS ENROLLED STUDENT ---\n"
-                for enrollment in user_enrollments:
-                    # इनरोल भएको कोर्षसँग सम्बन्धित नोटहरू तान्ने
-                    course_notes = Note.objects.filter(course=enrollment.course)
-                    for note in course_notes:
-                        # नोटको 'content' (TextField) खाली छैन भने मात्र एआईलाई दिने
-                        if note.content:
-                            enrolled_notes_context += f"TOPIC: {note.title}\nCONTENT: {note.content}\n\n"
-            
-            # टर्मिनलमा डिबग गर्नको लागि (VS Code Terminal मा हेर्नुहोस)
-            print(f"DEBUG: User '{user.username}' has {user_enrollments.count()} enrollments.")
-            
-        except Exception as e:
-            print(f"Enrollment Check Error: {e}")
+    # >>> ३. अब यहाँ डिबग प्रिन्ट राख्नुहोस् (डेटा तानेपछि) <<<
+    print(f"\n--- FINAL DEBUG LOGS ---")
+    print(f"USER: {user} | AUTH: {user.is_authenticated}")
+    if user.is_authenticated:
+        print(f"ENROLLMENT COUNT: {Enrollment.objects.filter(student=user).count()}")
+        print(f"CONTEXT FOUND: {'YES' if enrolled_notes_context.strip() else 'NO'}")
+        print(f"CONTEXT PREVIEW: {enrolled_notes_context[:100]}...")
+    print(f"--- END LOGS ---\n")
 
-    # ================= 2. SYSTEM INSTRUCTION =================
-    
+    # 4. AI Instruction
     system_instruction = f"""
-    You are 'Informatics AI', a smart academic tutor for 'Informatic Education Path'.
-    
-    # DATABASE INFORMATION:
-    AVAILABLE COURSES:
-    {courses_info}
+    You are 'Informatics AI'. 
+    DATABASE INFO: {courses_info}
+    USER NOTES: {enrolled_notes_context if enrolled_notes_context.strip() else "NONE"}
 
-    USER'S PRIVATE NOTES (ONLY IF ENROLLED):
-    {enrolled_notes_context if enrolled_notes_context else "NONE (User is either guest or not enrolled in any course)."}
-
-    # STRICT RULES:
-    1. If PRIVATE NOTES is NOT "NONE", the user is an ENROLLED student. 
-    2. Answer their subject-related questions (like programming or theory) using the provided PRIVATE NOTES content.
-    3. Do NOT ask them to enroll if you see the relevant answer in the PRIVATE NOTES section.
-    4. If PRIVATE NOTES is "NONE" and they ask for specific programs or theory, tell them: 
-       "Please enroll in our course (Rs. 1000) to access private notes and solutions."
-    5. LANGUAGE: Reply in Nepali or English based on the user's question style.
-    6. Always be helpful and professional.
+    STRICT RULE: 
+    - If USER NOTES is NOT "NONE", answer using that information.
+    - If it is "NONE", ask them to enroll for Rs. 1000.
     """
 
-    # ================= 3. AI RESPONSE GENERATION =================
     try:
-        # मोडलको नाम 'gemini-1.5-flash-latest' वा 'gemini-pro' राख्नुहोस्
         model = genai.GenerativeModel('gemini-flash-latest')
-        
         full_prompt = f"{system_instruction}\n\nUser Question: {user_message}"
         response = model.generate_content(full_prompt)
-        
-        if response and response.text:
-            bot_reply = response.text
-        else:
-            bot_reply = "माफ गर्नुहोला, म अहिले जवाफ दिन असमर्थ छु।"
-
+        bot_reply = response.text if response.text else "Sorry, I couldn't process that."
     except Exception as e:
-        print(f"Gemini API Error: {e}")
-        bot_reply = "सिस्टममा केही प्राविधिक समस्या आयो। कृपया केही समयपछि प्रयास गर्नुहोस्।"
+        print(f"Gemini Error: {e}")
+        bot_reply = "Technical error occurred."
 
     return Response({'response': bot_reply})
