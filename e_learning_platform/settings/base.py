@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'chat',
     'inquiries',
     'videos',
+    'quiz',
 ]
 
 # We add CORS middleware at the top

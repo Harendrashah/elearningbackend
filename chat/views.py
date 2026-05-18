@@ -77,7 +77,7 @@ except ImportError:
     pass
 
 # तपाईंको Gemini API KEY
-API_KEY = "AIzaSyDhnjNrcIOxMXKY-_bjw9aGVOanN_w0kIE"
+API_KEY = "AIzaSyCCQjD71Gmq8nVO4p975tESv8WrOB6ILz8"
 genai.configure(api_key=API_KEY)
 
 @api_view(['POST'])

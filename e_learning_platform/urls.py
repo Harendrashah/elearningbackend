@@ -14,7 +14,8 @@ urlpatterns = [
     path('api/streaming/', include('streaming.urls')),
     path('api/notes/', include('notes.urls')),   # ✅ Notes API
     path('api/', include('videos.urls')),    
-    path('api/chat/', include('chat.urls')),             # URL: /api/chat/ask/
+    path('api/chat/', include('chat.urls')),  
+    path('api/quiz/', include('quiz.urls')),
     
 
 ]
