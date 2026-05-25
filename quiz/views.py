@@ -1,12 +1,25 @@
-from rest_framework import generics, permissions
+# quiz/views.py
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from .models import Quiz
-from .serializers import QuizSerializer
-from courses.models import Enrollment 
 from rest_framework.views import APIView
-from .models import Quiz, Question, Choice, QuizSubmission
-from .serializers import QuizSubmissionSerializer
+from django.shortcuts import get_object_or_404
 
+from .models import Quiz, Question, Choice, QuizSubmission
+from .serializers import QuizSerializer, QuizSubmissionSerializer
+from courses.models import Enrollment
+
+
+# ─── Permission Classes ───────────────────────────────────────────────────────
+
+class IsTeacherOrAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        role = getattr(getattr(request.user, 'profile', None), 'role', None)
+        return role in ['teacher', 'admin'] or request.user.is_staff
+
+
+# ─── Course Quiz List ─────────────────────────────────────────────────────────
 
 class CourseQuizListView(generics.ListAPIView):
     serializer_class = QuizSerializer
@@ -15,66 +28,127 @@ class CourseQuizListView(generics.ListAPIView):
     def get_queryset(self):
         course_id = self.kwargs['course_id']
         user = self.request.user
-        
-        # Check if student is enrolled in this course
-        is_enrolled = Enrollment.objects.filter(user=user, course_id=course_id).exists()
-        
-        if is_enrolled or user.profile.role in ['teacher', 'admin']:
+        role = getattr(getattr(user, 'profile', None), 'role', None)
+
+        # Teacher/Admin le sabai course ko quiz hercha
+        if role in ['teacher', 'admin'] or user.is_staff:
             return Quiz.objects.filter(course_id=course_id)
-        else:
-            return Quiz.objects.none() # Enroll छैन भने खाली पठाइदिने
+
+        # ✅ FIX: 'user' hoina, 'student' ho
+        is_enrolled = Enrollment.objects.filter(
+            student=user,
+            course_id=course_id
+        ).exists()
+
+        if is_enrolled:
+            return Quiz.objects.filter(course_id=course_id)
+
+        return Quiz.objects.none()
+
+
+# ─── Quiz Detail ──────────────────────────────────────────────────────────────
 
 class QuizDetailView(generics.RetrieveAPIView):
-    queryset = Quiz.objects.all()
     serializer_class = QuizSerializer
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'id'
 
+    def get_queryset(self):
+        user = self.request.user
+        role = getattr(getattr(user, 'profile', None), 'role', None)
+
+        if role in ['teacher', 'admin'] or user.is_staff:
+            return Quiz.objects.all()
+
+        # Student le enrolled course ko matra quiz hercha
+        enrolled_courses = Enrollment.objects.filter(
+            student=user
+        ).values_list('course', flat=True)
+
+        return Quiz.objects.filter(course_id__in=enrolled_courses)
 
 
-# views.py भित्रको SubmitQuizView परिमार्जन
+# ─── Quiz List + Create (Admin/Teacher only create) ───────────────────────────
+
+class QuizListCreateView(generics.ListCreateAPIView):
+    queryset = Quiz.objects.all()
+    serializer_class = QuizSerializer
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated(), IsTeacherOrAdmin()]
+        return [permissions.IsAuthenticated()]
+
+
+# ─── Submit Quiz ──────────────────────────────────────────────────────────────
+
 class SubmitQuizView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request, quiz_id):
         user = request.user
-        # फ्रन्टइन्डबाट {0: choice_id, 1: choice_id} यसरी डेटा आउँछ
-        user_answers = request.data.get('answers') 
-        
-        quiz = Quiz.objects.get(id=quiz_id)
+
+        # ✅ FIX: get_object_or_404 — quiz nabhetyo bhane 404, 500 hoina
+        quiz = get_object_or_404(Quiz, id=quiz_id)
+
+        # ✅ FIX: Format { "question_id": choice_id } — index-based hoina
+        # Frontend bata yo format pathau:
+        # { "answers": { "5": 12, "6": 15, "7": 18 } }
+        # key = question ID, value = selected choice ID
+        user_answers = request.data.get('answers', {})
+
+        if not user_answers:
+            return Response(
+                {"error": "answers field required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         questions = quiz.questions.all()
         correct_count = 0
 
-        # ब्याकइन्डमै सही उत्तर चेक गर्ने (चिटिङ रोक्न)
-        for idx, question in enumerate(questions):
-            selected_choice_id = user_answers.get(str(idx)) # Index को आधारमा
+        for question in questions:
+            selected_choice_id = user_answers.get(str(question.id))
+
             if selected_choice_id:
                 is_correct = Choice.objects.filter(
-                    id=selected_choice_id, 
-                    question=question, 
+                    id=selected_choice_id,
+                    question=question,
                     is_correct=True
                 ).exists()
                 if is_correct:
                     correct_count += 1
-        
-        score_percentage = (correct_count / questions.count()) * 100 if questions.count() > 0 else 0
-        
-        # Result Store गर्ने
-        QuizSubmission.objects.create(
+
+        total = questions.count()
+        score_percentage = (correct_count / total * 100) if total > 0 else 0
+
+        # ✅ Already submitted bhane update garne, duplicate nagar
+        submission, created = QuizSubmission.objects.update_or_create(
             student=user,
             quiz=quiz,
-            score=score_percentage
+            defaults={'score': score_percentage}
         )
 
         return Response({
-            "score": score_percentage,
+            "score": round(score_percentage, 2),
             "correct_answers": correct_count,
-            "total_questions": questions.count()
-        })
+            "total_questions": total,
+            "passed": score_percentage >= 70
+        }, status=status.HTTP_200_OK)
+
+
+# ─── Student Dashboard ────────────────────────────────────────────────────────
+
 class StudentDashboardView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request):
         user = request.user
-        # पछिल्लो क्विज सबमिसन तान्ने
-        last_submission = QuizSubmission.objects.filter(student=user).order_by('-submitted_at').first()
-        
+        submissions = QuizSubmission.objects.filter(
+            student=user
+        ).order_by('-submitted_at')
+
+        last_submission = submissions.first()
+
         warning_message = None
         if last_submission and last_submission.score < 70:
             warning_message = "तिम्रो मेहेनत पुगिरहेको छैन, अझै मेहेनत गर्नुपर्छ!"
@@ -82,25 +156,34 @@ class StudentDashboardView(APIView):
         return Response({
             "user": user.username,
             "warning_message": warning_message,
-            "last_score": last_submission.score if last_submission else None
+            "last_score": last_submission.score if last_submission else None,
+            "total_quizzes_attempted": submissions.count(),
         })
-class QuizListCreateView(generics.ListCreateAPIView):
-    queryset = Quiz.objects.all()
-    serializer_class = QuizSerializer
+
+
+# ─── Admin: Quiz Submissions List ────────────────────────────────────────────
 
 class AdminQuizSubmissionsView(generics.ListAPIView):
     serializer_class = QuizSubmissionSerializer
-    
-    def get_queryset(self):
-        # यो क्विजमा कस-कसले एक्जाम दियो भनेर पठाउने
-        quiz_id = self.kwargs['quiz_id']
-        return QuizSubmission.objects.filter(quiz_id=quiz_id).order_by('-submitted_at')
+    # ✅ FIX: Permission add gareko — pehile koi pani hernu sakthyo
+    permission_classes = [permissions.IsAuthenticated, IsTeacherOrAdmin]
 
-# views.py को सबैभन्दा तल यो थप्नुहोस्
+    def get_queryset(self):
+        quiz_id = self.kwargs['quiz_id']
+        # ✅ FIX: Quiz exist nagare 404
+        get_object_or_404(Quiz, id=quiz_id)
+        return QuizSubmission.objects.filter(
+            quiz_id=quiz_id
+        ).order_by('-submitted_at')
+
+
+# ─── Student: My Submissions ──────────────────────────────────────────────────
+
 class StudentSubmissionsView(generics.ListAPIView):
     serializer_class = QuizSubmissionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # लगइन भएको विद्यार्थीको मात्रै सबमिसन पठाउने
-        return QuizSubmission.objects.filter(student=self.request.user).order_by('-submitted_at')
+        return QuizSubmission.objects.filter(
+            student=self.request.user
+        ).order_by('-submitted_at')
