@@ -36,7 +36,7 @@ class QuizSubmission(models.Model):
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # ✅ DB level ma enforce — ek student ek quiz ma ek palta
+        # DB level ma enforce — ek student ek quiz ma ek palta
         unique_together = ('student', 'quiz')
 
     def __str__(self):

@@ -1,4 +1,3 @@
-# videos/views.py
 from rest_framework import viewsets, parsers, permissions
 from .models import Video
 from .serializers import VideoSerializer
@@ -6,7 +5,12 @@ from courses.models import Enrollment
 
 class VideoViewSet(viewsets.ModelViewSet):
     serializer_class = VideoSerializer
-    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    # ✅ JSONParser add gareko — PATCH request ko lagi
+    parser_classes = [
+        parsers.MultiPartParser,
+        parsers.FormParser,
+        parsers.JSONParser,      # ✅ ADD GAREKO
+    ]
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -19,10 +23,10 @@ class VideoViewSet(viewsets.ModelViewSet):
             return Video.objects.all().order_by('-created_at')
 
         if course_id:
-            is_enrolled = Enrollment.objects.filter(student=user, course_id=course_id).exists()
+            is_enrolled = Enrollment.objects.filter(
+                student=user, course_id=course_id
+            ).exists()
             if is_enrolled:
                 return Video.objects.filter(course_id=course_id).order_by('created_at')
-            else:
-                return Video.objects.none()
-        
+
         return Video.objects.none()

@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 
 from .models import Quiz, Question, Choice, QuizSubmission
-from .serializers import QuizSerializer, QuizSubmissionSerializer
+from .serializers import QuizSerializer, QuizAdminSerializer, QuizSubmissionSerializer
 from courses.models import Enrollment
 
 
@@ -30,11 +30,9 @@ class CourseQuizListView(generics.ListAPIView):
         user = self.request.user
         role = getattr(getattr(user, 'profile', None), 'role', None)
 
-        # Teacher/Admin le sabai course ko quiz hercha
         if role in ['teacher', 'admin'] or user.is_staff:
             return Quiz.objects.filter(course_id=course_id)
 
-        # ✅ FIX: 'user' hoina, 'student' ho
         is_enrolled = Enrollment.objects.filter(
             student=user,
             course_id=course_id
@@ -60,7 +58,6 @@ class QuizDetailView(generics.RetrieveAPIView):
         if role in ['teacher', 'admin'] or user.is_staff:
             return Quiz.objects.all()
 
-        # Student le enrolled course ko matra quiz hercha
         enrolled_courses = Enrollment.objects.filter(
             student=user
         ).values_list('course', flat=True)
@@ -68,11 +65,18 @@ class QuizDetailView(generics.RetrieveAPIView):
         return Quiz.objects.filter(course_id__in=enrolled_courses)
 
 
-# ─── Quiz List + Create (Admin/Teacher only create) ───────────────────────────
+# ─── Quiz List + Create ───────────────────────────────────────────────────────
 
 class QuizListCreateView(generics.ListCreateAPIView):
     queryset = Quiz.objects.all()
-    serializer_class = QuizSerializer
+
+    # ✅ FIX: Admin le herda correct answers dekhauxa, student le hoina
+    def get_serializer_class(self):
+        user = self.request.user
+        role = getattr(getattr(user, 'profile', None), 'role', None)
+        if role in ['teacher', 'admin'] or user.is_staff:
+            return QuizAdminSerializer
+        return QuizSerializer
 
     def get_permissions(self):
         if self.request.method == 'POST':
@@ -87,14 +91,8 @@ class SubmitQuizView(APIView):
 
     def post(self, request, quiz_id):
         user = request.user
-
-        # ✅ FIX: get_object_or_404 — quiz nabhetyo bhane 404, 500 hoina
         quiz = get_object_or_404(Quiz, id=quiz_id)
 
-        # ✅ FIX: Format { "question_id": choice_id } — index-based hoina
-        # Frontend bata yo format pathau:
-        # { "answers": { "5": 12, "6": 15, "7": 18 } }
-        # key = question ID, value = selected choice ID
         user_answers = request.data.get('answers', {})
 
         if not user_answers:
@@ -121,7 +119,7 @@ class SubmitQuizView(APIView):
         total = questions.count()
         score_percentage = (correct_count / total * 100) if total > 0 else 0
 
-        # ✅ Already submitted bhane update garne, duplicate nagar
+        # ✅ Duplicate submission update garne, naya nagarne
         submission, created = QuizSubmission.objects.update_or_create(
             student=user,
             quiz=quiz,
@@ -165,12 +163,10 @@ class StudentDashboardView(APIView):
 
 class AdminQuizSubmissionsView(generics.ListAPIView):
     serializer_class = QuizSubmissionSerializer
-    # ✅ FIX: Permission add gareko — pehile koi pani hernu sakthyo
     permission_classes = [permissions.IsAuthenticated, IsTeacherOrAdmin]
 
     def get_queryset(self):
         quiz_id = self.kwargs['quiz_id']
-        # ✅ FIX: Quiz exist nagare 404
         get_object_or_404(Quiz, id=quiz_id)
         return QuizSubmission.objects.filter(
             quiz_id=quiz_id
