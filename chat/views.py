@@ -1,139 +1,133 @@
-# from rest_framework.decorators import api_view, permission_classes
-# from rest_framework.permissions import AllowAny
-# from rest_framework.response import Response
-# import google.generativeai as genai
-
-# # --- MODELS IMPORTS ---
-# from courses.models import Course, Enrollment
-# from notes.models import Note
-# try:
-#     from streaming.models import Stream 
-#     from videos.models import Video      
-# except ImportError:
-#     pass
-
-# # तपाईंको API KEY
-# API_KEY = "AIzaSyDhnjNrcIOxMXKY-_bjw9aGVOanN_w0kIE"
-# genai.configure(api_key=API_KEY)
-
-# @api_view(['POST'])
-# @permission_classes([AllowAny])
-# def chatbot_api(request):
-#     user_message = request.data.get('message', '')
-#     user = request.user 
-    
-#     courses_info = ""
-#     enrolled_notes_context = ""
-
-#     # कोर्स इन्फो
-#     all_courses = Course.objects.all()
-#     for course in all_courses:
-#         courses_info += f"- {course.title}: Rs. {course.price}\n"
-
-#     # युजर इनरोलमेन्ट र नोट चेक
-#     if user.is_authenticated:
-#         # यहाँ 'student=user' लाई आफ्नो मोडल अनुसार 'user=user' मा फेर्नु पर्ने हुन सक्छ
-#         enrollments = Enrollment.objects.filter(student=user) 
-#         if enrollments.exists():
-#             for enc in enrollments:
-#                 notes = Note.objects.filter(course=enc.course)
-#                 for note in notes:
-#                     if note.content: # यदि कन्टेन्ट छ भने मात्रै थप्ने
-#                         enrolled_notes_context += f"TOPIC: {note.title}\nCONTENT: {note.content}\n\n"
-
-#     system_instruction = f"""
-#     You are Informatics AI. 
-#     DATABASE INFO: {courses_info}
-#     USER NOTES: {enrolled_notes_context if enrolled_notes_context else "NONE"}
-
-#     RULE: If USER NOTES has information, you MUST provide it directly. 
-#     Do NOT tell them to enroll if they are already enrolled.
-#     """
-#     # ४. AI Response
-#     try:
-#         model = genai.GenerativeModel('gemini-flash-latest')
-#         full_prompt = f"{system_instruction}\n\nUser Question: {user_message}"
-#         response = model.generate_content(full_prompt)
-#         bot_reply = response.text if response.text else "माफ गर्नुहोला, मैले बुझ्न सकिन।"
-#     except Exception as e:
-#         print(f"Gemini Error: {e}")
-#         bot_reply = "सिस्टममा समस्या आयो। कृपया फेरि प्रयास गर्नुहोला।"
-
-#     return Response({'response': bot_reply})
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-import google.generativeai as genai
+import os
 
-# --- MODELS IMPORTS ---
-# तपाईंको एपको नाम अनुसार 'courses' र 'notes' बाट इम्पोर्ट गर्नुहोस्
+from google import genai
+from google.genai import types
+
 from courses.models import Course, Enrollment
 from notes.models import Note
 
-try:
-    from streaming.models import Stream 
-    from videos.models import Video      
-except ImportError:
-    pass
+API_KEY = 'AQ.Ab8RN6LdO2HpRSxjZVJZ94_KvmVEDTZt0t4nteykSp9qBwIYmg'
+client = genai.Client(api_key=API_KEY)
 
-# तपाईंको Gemini API KEY
-API_KEY = "AIzaSyCCQjD71Gmq8nVO4p975tESv8WrOB6ILz8"
-genai.configure(api_key=API_KEY)
+# ✅ नयाँ SDK मा सही model names (prefix "models/" नचाहिने)
+MODELS_TO_TRY = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+]
+
+
+def get_enrolled_notes_context(user):
+    context_parts = []
+    enrolled_course_names = []
+
+    enrollments = Enrollment.objects.filter(student=user).select_related('course')
+    if not enrollments.exists():
+        return None, []
+
+    for enrollment in enrollments:
+        course = enrollment.course
+        enrolled_course_names.append(course.title)
+        for note in Note.objects.filter(course=course):
+            content = (note.content or '').strip()
+            if content:
+                truncated = content[:3000] if len(content) > 3000 else content
+                context_parts.append(
+                    f"=== COURSE: {course.title} | TOPIC: {note.title} ===\n{truncated}\n"
+                )
+
+    return ("\n".join(context_parts) if context_parts else None), enrolled_course_names
+
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def chatbot_api(request):
-    user_message = request.data.get('message', '')
-    user = request.user 
-    
-    courses_info = ""
-    enrolled_notes_context = ""
+    user_message = request.data.get('message', '').strip()
+    if not user_message:
+        return Response({'response': 'कृपया प्रश्न सोध्नुहोस्।'})
 
-    # 1. सबै कोर्षको जानकारी तान्ने
-    all_courses = Course.objects.all()
-    for course in all_courses:
-        courses_info += f"- {course.title}: Rs. {course.price}\n"
+    user = request.user
 
-    # 2. युजर इनरोलमेन्ट र नोट तान्ने
-    if user.is_authenticated:
-        user_enrollments = Enrollment.objects.filter(student=user)
-        
-        if user_enrollments.exists():
-            enrolled_notes_context = "\n--- PRIVATE NOTES FOR THIS STUDENT ---\n"
-            for enrollment in user_enrollments:
-                course_notes = Note.objects.filter(course=enrollment.course)
-                for note in course_notes:
-                    # नोटको सामाग्री (Content) छ भने मात्र थप्ने
-                    content_text = note.content if note.content else "No text description available."
-                    enrolled_notes_context += f"TOPIC: {note.title}\nCONTENT: {content_text}\n\n"
+    courses_list = "\n".join(
+        [f"- {c.title} (Rs. {c.price})" for c in Course.objects.filter(is_published=True)]
+    ) or "कुनै course उपलब्ध छैन।"
 
-    # >>> ३. अब यहाँ डिबग प्रिन्ट राख्नुहोस् (डेटा तानेपछि) <<<
-    print(f"\n--- FINAL DEBUG LOGS ---")
-    print(f"USER: {user} | AUTH: {user.is_authenticated}")
-    if user.is_authenticated:
-        print(f"ENROLLMENT COUNT: {Enrollment.objects.filter(student=user).count()}")
-        print(f"CONTEXT FOUND: {'YES' if enrolled_notes_context.strip() else 'NO'}")
-        print(f"CONTEXT PREVIEW: {enrolled_notes_context[:100]}...")
-    print(f"--- END LOGS ---\n")
+    notes_context, enrolled_courses = get_enrolled_notes_context(user)
+    has_notes = bool(notes_context)
 
-    # 4. AI Instruction
-    system_instruction = f"""
-    You are 'Informatics AI'. 
-    DATABASE INFO: {courses_info}
-    USER NOTES: {enrolled_notes_context if enrolled_notes_context.strip() else "NONE"}
+    print(f"\n{'='*50}")
+    print(f"USER: {getattr(user, 'email', user.username)}")
+    print(f"ENROLLED: {enrolled_courses} | NOTES: {has_notes}")
+    print(f"QUESTION: {user_message}")
+    print(f"{'='*50}\n")
 
-    STRICT RULE: 
-    - If USER NOTES is NOT "NONE", answer using that information.
-    - If it is "NONE", ask them to enroll for Rs. 1000.
-    """
+    system_prompt = f"""
+तपाईं 'Informatics AI' हुनुहुन्छ — एउटा smart e-learning assistant।
 
-    try:
-        model = genai.GenerativeModel('gemini-flash-latest')
-        full_prompt = f"{system_instruction}\n\nUser Question: {user_message}"
-        response = model.generate_content(full_prompt)
-        bot_reply = response.text if response.text else "Sorry, I couldn't process that."
-    except Exception as e:
-        print(f"Gemini Error: {e}")
-        bot_reply = "Technical error occurred."
+**LANGUAGE RULE:**
+- Nepali मा सोधे → Nepali (Devanagari) मा जवाफ दिनुहोस्
+- English मा सोधे → English मा जवाफ दिनुहोस्
+- Mixed भए → जुन बढी छ त्यही भाषामा
+- Technical terms (HTML, VLAN, Python, etc.) translate नगर्नुहोस्
+
+**PLATFORM COURSES:**
+{courses_list}
+
+**STUDENT NOTES ({getattr(user, 'username', 'Student')} को enrolled courses बाट):**
+{notes_context if has_notes else "यो student ले अहिलेसम्म कुनै course enroll गरेको छैन।"}
+
+**RULES:**
+- Notes मा answer छ भने → notes बाट explain गर्नुहोस्
+- Notes मा छैन तर enrolled छ → general knowledge बाट answer दिनुहोस्
+- Enrolled छैन → courses बताउनुहोस् र enroll गर्न encourage गर्नुहोस्
+- Code examples → code block मा राख्नुहोस्
+- छोटो प्रश्न → छोटो answer, complex → structured answer
+""".strip()
+
+    bot_reply = None
+    for model_name in MODELS_TO_TRY:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=user_message,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    max_output_tokens=1024,
+                    temperature=0.7,
+                )
+            )
+            bot_reply = response.text or "माफ गर्नुहोला, जवाफ generate हुन सकेन।"
+            print(f"✅ Model used: {model_name}")
+            break
+        except Exception as e:
+            print(f"⚠️ {model_name} failed: {type(e).__name__}: {e}")
+            continue
+
+    if not bot_reply:
+        bot_reply = "AI को quota सकियो। केहि समय पछि फेरि प्रयास गर्नुहोस्।"
 
     return Response({'response': bot_reply})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def chat_status(request):
+    enrollments = Enrollment.objects.filter(student=request.user).select_related('course')
+    enrolled_courses = [
+        {
+            'id': e.course.id,
+            'title': e.course.title,
+            'has_notes': Note.objects.filter(
+                course=e.course, content__isnull=False
+            ).exclude(content='').exists()
+        }
+        for e in enrollments
+    ]
+    return Response({
+        'is_enrolled': bool(enrolled_courses),
+        'enrolled_courses': enrolled_courses,
+        'total_courses': len(enrolled_courses)
+    })
