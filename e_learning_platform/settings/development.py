@@ -1,27 +1,31 @@
 from .base import *
-from urllib.parse import quote
-import dj_database_url
+# from urllib.parse import quote
+# import dj_database_url
 
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'elearningbackend-ak5r.onrender.com']
+ALLOWED_HOSTS = config(
+    "ALLOWED_HOSTS",
+    default="localhost,127.0.0.1,"
+).split(",")
+# ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'elearningbackend-ak5r.onrender.com']
 
 # डेटाबेस सेटिङ - यसरी हाल्दा सबैभन्दा सुरक्षित हुन्छ
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres.whwzsjamfweosiijeysf',
-        'PASSWORD': 'ShahBro2060', 
-        'HOST': 'aws-1-ap-northeast-2.pooler.supabase.com',
-        'PORT': '6543',
-        # यो सही तरिका हो:
-        'DISABLE_SERVER_SIDE_CURSORS': True, 
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'postgres',
+#         'USER': 'postgres.whwzsjamfweosiijeysf',
+#         'PASSWORD': 'ShahBro2060', 
+#         'HOST': 'aws-1-ap-northeast-2.pooler.supabase.com',
+#         'PORT': '6543',
+#         # यो सही तरिका हो:
+#         'DISABLE_SERVER_SIDE_CURSORS': True, 
+#         'OPTIONS': {
+#             'sslmode': 'require',
+#         },
+#     }
+# }
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",

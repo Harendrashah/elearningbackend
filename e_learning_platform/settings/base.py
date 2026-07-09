@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-
+from decouple import config
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -22,8 +22,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # We will load this from an environment variable in production
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-5rpq+739@#rwcbu!2aph9qi!53z7#_(lyjppdrkmvz9fc_zuf5')
-
+SECRET_KEY = config(
+    'SECRET_KEY',
+    default='django-insecure-5rpq+739@#rwcbu!2aph9qi!53z7#_(lyjppdrkmvz9fc_zuf5'
+)
 # Application definition
 # We add our new apps and third-party libraries here
 INSTALLED_APPS = [
@@ -91,17 +93,31 @@ ASGI_APPLICATION = 'e_learning_platform.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 # The database configuration will be overridden in development/production files
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.environ.get('DB_NAME'),
+#         'USER': os.environ.get('DB_USER'),
+#         'HOST': os.environ.get('DB_HOST'),
+#         'PASSWORD': os.environ.get('DB_PASSWORD'),
+#         'PORT': os.environ.get('DB_PORT'),
+#     }
+# }
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'HOST': os.environ.get('DB_HOST'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'PORT': os.environ.get('DB_PORT'),
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
+        'PORT': config('DB_PORT'),
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
+        'DISABLE_SERVER_SIDE_CURSORS': True,
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
