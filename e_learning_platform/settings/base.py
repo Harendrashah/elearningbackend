@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 from decouple import config
+from datetime import timedelta  # 👈 यो नयाँ लाइन थप्नुहोस्
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -176,7 +177,13 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
 }
-
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # टोकन १ दिन (२४ घण्टा) चल्छ
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7), # रिफ्रेस टोकन ७ दिन चल्छ
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 # Channels settings for WebSockets
 CHANNEL_LAYERS = {

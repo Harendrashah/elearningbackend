@@ -18,4 +18,14 @@ class InstructorSerializer(serializers.ModelSerializer):
         response = super().to_representation(instance)
         if instance.user:
             response['user'] = UserSerializer(instance.user).data
+
+        # 🔥 FIX: Instructor le aafai image nahaleko bhaye,
+        # linked teacher ko UserProfile.profile_image bata fallback garne
+        if not instance.image:
+            profile = getattr(instance.user, 'profile', None)
+            if profile and profile.profile_image:
+                request = self.context.get('request')
+                image_url = profile.profile_image.url
+                response['image'] = request.build_absolute_uri(image_url) if request else image_url
+
         return response
