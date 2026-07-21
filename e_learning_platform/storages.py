@@ -16,6 +16,5 @@ class SupabasePublicStorage(S3Storage):
     """
 
     def url(self, name, parameters=None, expire=None):
-        name = self._normalize_name(self._clean_name(name))
         base_url = settings.SUPABASE_PROJECT_URL.rstrip('/')
         return f"{base_url}/storage/v1/object/public/{self.bucket_name}/{name}"
