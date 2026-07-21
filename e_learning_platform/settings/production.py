@@ -2,18 +2,23 @@
 
 from .base import *
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+# Production mode
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# This will be loaded from an environment variable
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+# Secret key from Render Environment Variables
+SECRET_KEY = config('SECRET_KEY')
 
-# Add your production domain(s) here
-ALLOWED_HOSTS = ['yourdomain.com', 'www.yourdomain.com']
+# Allowed hosts
+ALLOWED_HOSTS = config(
+    'ALLOWED_HOSTS',
+    default='localhost,127.0.0.1,elearningbackend-ak5r.onrender.com'
+).split(',')
 
-# Database configuration is already in base.py, using environment variables
-# Make sure to set the DB_* environment variables on your server
+# CORS settings
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://informaticedu.netlify.app',
+]
 
-# Static files configuration for production (e.g., using Whitenoise or S3)
-# STATIC_ROOT = '/var/www/myproject/static/' # Example for a server
+CORS_ALLOW_CREDENTIALS = True
