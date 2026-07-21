@@ -158,7 +158,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Media files (uploads)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -192,5 +191,33 @@ CHANNEL_LAYERS = {
         'CONFIG': {
             "hosts": [('127.0.0.1', 6379)],
         },
+    },
+}
+# Supabase Storage Configuration
+
+# Supabase Storage Configuration
+
+AWS_ACCESS_KEY_ID = config('SUPABASE_ACCESS_KEY')
+
+AWS_SECRET_ACCESS_KEY = config('SUPABASE_SECRET_KEY')
+
+AWS_STORAGE_BUCKET_NAME = config('SUPABASE_BUCKET_NAME')
+
+AWS_S3_ENDPOINT_URL = config('SUPABASE_S3_ENDPOINT')
+
+AWS_S3_REGION_NAME = 'ap-northeast-2'
+
+AWS_S3_FILE_OVERWRITE = False
+
+AWS_DEFAULT_ACL = None
+
+AWS_QUERYSTRING_AUTH = False
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
