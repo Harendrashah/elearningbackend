@@ -9,10 +9,17 @@ from google.genai import types
 from courses.models import Course, Enrollment
 from notes.models import Note
 
-API_KEY = 'AQ.Ab8RN6LdO2HpRSxjZVJZ94_KvmVEDTZt0t4nteykSp9qBwIYmg'
-client = genai.Client(api_key=API_KEY)
+API_KEY = os.environ.get('GEMINI_API_KEY')
 
-# ✅ नयाँ SDK मा सही model names (prefix "models/" नचाहिने)
+if not API_KEY:
+    raise ValueError("GEMINI_API_KEY is missing")
+
+# Gemini Client
+client = genai.Client(
+    api_key=API_KEY
+)
+
+# ✅ Correct model names for the new SDK (no "models/" prefix needed)
 MODELS_TO_TRY = [
     'gemini-2.5-flash',
     'gemini-2.0-flash',
@@ -47,13 +54,13 @@ def get_enrolled_notes_context(user):
 def chatbot_api(request):
     user_message = request.data.get('message', '').strip()
     if not user_message:
-        return Response({'response': 'कृपया प्रश्न सोध्नुहोस्।'})
+        return Response({'response': 'Please ask a question.'})
 
     user = request.user
 
     courses_list = "\n".join(
         [f"- {c.title} (Rs. {c.price})" for c in Course.objects.filter(is_published=True)]
-    ) or "कुनै course उपलब्ध छैन।"
+    ) or "No courses are available."
 
     notes_context, enrolled_courses = get_enrolled_notes_context(user)
     has_notes = bool(notes_context)
@@ -65,26 +72,26 @@ def chatbot_api(request):
     print(f"{'='*50}\n")
 
     system_prompt = f"""
-तपाईं 'Informatics AI' हुनुहुन्छ — एउटा smart e-learning assistant।
+You are 'Informatics AI' — a smart e-learning assistant.
 
 **LANGUAGE RULE:**
-- Nepali मा सोधे → Nepali (Devanagari) मा जवाफ दिनुहोस्
-- English मा सोधे → English मा जवाफ दिनुहोस्
-- Mixed भए → जुन बढी छ त्यही भाषामा
-- Technical terms (HTML, VLAN, Python, etc.) translate नगर्नुहोस्
+- If asked in Nepali → reply in Nepali (Devanagari)
+- If asked in English → reply in English
+- If mixed → reply in whichever language is more dominant
+- Do not translate technical terms (HTML, VLAN, Python, etc.)
 
 **PLATFORM COURSES:**
 {courses_list}
 
-**STUDENT NOTES ({getattr(user, 'username', 'Student')} को enrolled courses बाट):**
-{notes_context if has_notes else "यो student ले अहिलेसम्म कुनै course enroll गरेको छैन।"}
+**STUDENT NOTES (from {getattr(user, 'username', 'Student')}'s enrolled courses):**
+{notes_context if has_notes else "This student hasn't enrolled in any course yet."}
 
 **RULES:**
-- Notes मा answer छ भने → notes बाट explain गर्नुहोस्
-- Notes मा छैन तर enrolled छ → general knowledge बाट answer दिनुहोस्
-- Enrolled छैन → courses बताउनुहोस् र enroll गर्न encourage गर्नुहोस्
-- Code examples → code block मा राख्नुहोस्
-- छोटो प्रश्न → छोटो answer, complex → structured answer
+- If the notes contain the answer → explain from the notes
+- If not in the notes but enrolled → answer from general knowledge
+- If not enrolled → mention the courses and encourage enrollment
+- Code examples → put in a code block
+- Short question → short answer, complex → structured answer
 """.strip()
 
     bot_reply = None
@@ -99,7 +106,7 @@ def chatbot_api(request):
                     temperature=0.7,
                 )
             )
-            bot_reply = response.text or "माफ गर्नुहोला, जवाफ generate हुन सकेन।"
+            bot_reply = response.text or "Sorry, couldn't generate a response."
             print(f"✅ Model used: {model_name}")
             break
         except Exception as e:
@@ -107,7 +114,7 @@ def chatbot_api(request):
             continue
 
     if not bot_reply:
-        bot_reply = "AI को quota सकियो। केहि समय पछि फेरि प्रयास गर्नुहोस्।"
+        bot_reply = "AI quota exhausted. Please try again in a while."
 
     return Response({'response': bot_reply})
 
