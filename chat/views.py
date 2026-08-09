@@ -87,6 +87,8 @@ You are 'Informatics AI' — a smart e-learning assistant.
 {notes_context if has_notes else "This student hasn't enrolled in any course yet."}
 
 **RULES:**
+- Always reply in English only, regardless of the language the question is asked in.
+- Do not translate technical terms (HTML, VLAN, Python, etc.)
 - If the notes contain the answer → explain from the notes
 - If not in the notes but enrolled → answer from general knowledge
 - If not enrolled → mention the courses and encourage enrollment
