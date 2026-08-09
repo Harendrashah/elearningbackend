@@ -286,7 +286,7 @@ class StudentDashboardView(APIView):
         last_submission = submissions.first()
         warning_message = None
         if last_submission and last_submission.score < 70:
-            warning_message = "तिम्रो मेहेनत पुगिरहेको छैन, अझै मेहेनत गर्नुपर्छ!"
+            warning_message = "You're not putting in enough effort. You need to work harder!"
         return Response({
             "user": user.username,
             "warning_message": warning_message,
@@ -422,7 +422,7 @@ def ai_generate_quiz(request):
 
     # यदि नोट भेटिएन भने युजरलाई जानकारी दिने
     if not notes.exists():
-        return Response({'error': 'यो टपिक वा कोर्समा कुनै नोट भेटिएन। पहिले यस टपिकको नोट अपलोड गर्नुहोस्।'}, status=400)
+        return Response({'error': 'There are no notes available for this topic or course. Please upload the notes for this topic first.'}, status=400)
 
     # नोटको टेक्स्ट मिलाउने
     combined_content = ""
@@ -473,6 +473,6 @@ Rules:
         return Response({'success': True, 'generated': data})
 
     except json.JSONDecodeError as e:
-        return Response({'error': 'AI le galat format diyo. Feri try garnuhos.'}, status=500)
+        return Response({'error': 'AI returned invalid format. Please try again.'}, status=500)
     except Exception as e:
         return Response({'error': str(e)}, status=500)
